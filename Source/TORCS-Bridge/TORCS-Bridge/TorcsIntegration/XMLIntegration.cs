@@ -29,6 +29,8 @@ namespace TORCS_Bridge.TorcsIntegration
 
             XmlDocument doc = new XmlDocument();
             doc.Load(FilePath);
+
+            //TODO: Backup original file. Restore after all games are done
             
             XmlNodeList aNodes = doc.SelectNodes(NodePath);
 
@@ -65,7 +67,7 @@ namespace TORCS_Bridge.TorcsIntegration
             doc.Save(FilePath);
         }
 
-        public static string GetJSONOfResultsFromXMLResults(string TORCSResultsPath, string ResultsFilePath, string ResultXMLPath)
+        public static string GetJSONOfResultsFromXMLResults(string ResultsFilePath, string ResultXMLPath)
         {
             //SamplePath = "S_E-Track 6.S_Results.S_Qualifications.S_Rank.S_1.A_best lap time.T_val"
             var PathElements = ResultXMLPath.Split('.');
@@ -73,7 +75,7 @@ namespace TORCS_Bridge.TorcsIntegration
             string NodePath = "/params/section";
 
             XmlDocument doc = new XmlDocument();
-            doc.Load(TORCSResultsPath + ResultsFilePath);
+            doc.Load(ResultsFilePath);
 
             XmlNodeList aNodes = doc.SelectNodes(NodePath);
 

@@ -14,16 +14,19 @@ namespace TORCS_Bridge.TorcsIntegration
 
         //Results are stored in AppData\Local\torcs\results\mmcustom
 
-        //Returns path to file
-        public static string RunTorcs(string TORCSInstallPath, string TORCSResultsPath, int NumberOfRuns = 1, string RaceConfig = @"config\raceman\mmcustom.xml")
+        //Returns path to results file
+        public static string RunTorcs(string TORCSInstallPath, string TORCSResultsPath, int InstanceNumber, int NumberOfRuns = 1, string RaceConfig = @"config\raceman\mmcustom")
         {
+            //TODO: move RaceConfig to RaceConfig+InstanceNumber
+            File.Copy(Path.Combine(TORCSInstallPath, RaceConfig + ".xml"), Path.Combine(TORCSInstallPath, RaceConfig + InstanceNumber + ".xml"), true);
+
             ProcessStartInfo startInfo = new ProcessStartInfo();
-            startInfo.CreateNoWindow = false;
-            startInfo.UseShellExecute = true;
-            startInfo.FileName = "wtorcs.exe";
+            //startInfo.CreateNoWindow = false;
+            startInfo.UseShellExecute = false;
+            startInfo.FileName = Path.Combine(TORCSInstallPath,"wtorcs.exe");
             startInfo.WorkingDirectory = TORCSInstallPath;
             startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            startInfo.Arguments = "-r " + RaceConfig;
+            startInfo.Arguments = "-r " + RaceConfig + InstanceNumber + ".xml";
 
             try
             {
@@ -36,7 +39,9 @@ namespace TORCS_Bridge.TorcsIntegration
             {
             }
 
-            var rawentries = Directory.GetFiles(TORCSResultsPath, "*.xml");
+            var ConfigName = RaceConfig.Split('\\').Last() + InstanceNumber;
+
+            var rawentries = Directory.GetFiles(Path.Combine(TORCSResultsPath, ConfigName), "*.xml");
 
             return rawentries.OrderBy(t => t).Last();
         }
