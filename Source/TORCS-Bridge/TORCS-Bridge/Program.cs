@@ -14,12 +14,14 @@ namespace TORCS_Bridge
     class Program
     {
         public static string HostName = "localhost";
+        public static string TORCSInstallDirectory = "";
 
         static void Main(string[] args)
         {
             //TODO REMOVE
 
-            XMLIntegration.ChangeValueInTorcsXML("F_cars.F_car1-ow1.f_car1-ow1.S_Car.A_mass.T_val", 20);
+            XMLIntegration.ChangeValueInTorcsXML(@"F:\torcs\","F_cars.F_car1-ow1.f_car1-ow1.S_Car.A_mass.T_val", 20);
+            XMLIntegration.GetJSONOfResultsFromXMLResults(@"C:\Users\Night\AppData\Local\torcs\results\mmcustom\", "results-2017-04-24-17-43-03.xml", "S_E-Track 6.S_Results.S_Qualifications.S_Rank.S_1.A_best lap time.T_val");
 
             //TODO REMOVE
 
