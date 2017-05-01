@@ -19,18 +19,35 @@ namespace TORCS_Bridge
         public static string TORCSResultsDirectory = "";
         public static int InstanceNumber = 0;
 
+        public static void LoadParameters(string[] args)
+        {
+            if (args.Length > 0)
+            {
+                HostName = args[0];
+                TORCSInstallDirectory = args[1];
+                TORCSResultsDirectory = args[2];
+                InstanceNumber = int.Parse(args[3]);
+            }
+            else
+            {
+                Console.Write("Host Name: ");
+
+                HostName = Console.ReadLine();
+            }
+        }
+
         static void Main(string[] args)
         {
             //TODO REMOVE
 
-            XMLIntegration.ChangeValueInTorcsXML(@"F:\torcs\","F_cars.F_car1-ow1.f_car1-ow1.S_Car.A_mass.T_val", 20);
+            //XMLIntegration.ChangeValueInTorcsXML(@"F:\torcs\","F_cars.F_car1-ow1.f_car1-ow1.S_Car.A_mass.T_val", 20);
             //XMLIntegration.GetJSONOfResultsFromXMLResults(@"C:\Users\Night\AppData\Local\torcs\results\mmcustom\results-2017-04-24-17-43-03.xml", "S_E-Track 6.S_Results.S_Qualifications.S_Rank.S_1.A_best lap time.T_val");
 
-            XMLIntegration.GetJSONOfResultsFromXMLResults(RunHeadless.RunTorcs(@"F:\torcs\", @"C:\Users\Night\AppData\Local\torcs\results\", 1), "S_E-Track 6.S_Results.S_Qualifications.S_Rank.S_1.A_best lap time.T_val");
+            //XMLIntegration.GetJSONOfResultsFromXMLResults(RunHeadless.RunTorcs(@"F:\torcs\", @"C:\Users\Night\AppData\Local\torcs\results\", 1), "S_E-Track 6.S_Results.S_Qualifications.S_Rank.S_1.A_best lap time.T_val");
 
             //TODO REMOVE
 
-
+            LoadParameters(args);
 
             var factory = new ConnectionFactory()
             {
@@ -82,12 +99,12 @@ namespace TORCS_Bridge
                                     {
                                         //Params[(int)Param.custom.index] += (double)Param.value;
                                         //Find appropriate xml file in Torcs and apply changes 
-                                        XMLIntegration.ChangeValueInTorcsXML(TORCSInstallDirectory, Param.name, (double)Param.value);
+                                        XMLIntegration.ChangeValueInTorcsXML(TORCSInstallDirectory, (string)Param.name, (double)Param.value);
                                     }
                                 }
 
                                 //Run TORCS [TODO change number of games to custom value]
-                                var PathToResultsFile = RunHeadless.RunTorcs(TORCSInstallDirectory, TORCSResultsDirectory, 1);
+                                var PathToResultsFile = RunHeadless.RunTorcs(TORCSInstallDirectory, TORCSResultsDirectory, 1, 1, (string)JResults.custom.RaceConfig);
 
                                 Dictionary<string, object> collection = new Dictionary<string, object>()
                                     {
@@ -96,8 +113,8 @@ namespace TORCS_Bridge
                                 //Collect results
                                 foreach (var Metric in JResults.metrics)
                                 {
-                                    var Value = XMLIntegration.GetJSONOfResultsFromXMLResults(PathToResultsFile, Metric.name);
-                                    collection.Add(Metric.name, Value);
+                                    var Value = XMLIntegration.GetJSONOfResultsFromXMLResults(PathToResultsFile, (string)Metric.name);
+                                    collection.Add((string)Metric.name, Value);
                                 }
 
                                 JObject Result = new JObject(

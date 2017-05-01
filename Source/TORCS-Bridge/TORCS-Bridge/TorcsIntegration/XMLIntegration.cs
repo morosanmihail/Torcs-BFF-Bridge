@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,10 +10,10 @@ namespace TORCS_Bridge.TorcsIntegration
 {
     class XMLIntegration
     {
-        public static void ChangeValueInTorcsXML(string TORCSInstallPath, string Path, double NewValue)
+        public static void ChangeValueInTorcsXML(string TORCSInstallPath, string XPath, double NewValue)
         {
             // SamplePath = "F_cars.F_car1-ow1.f_car1-ow1.S_Car.A_mass.T_val"
-            var PathElements = Path.Split('.');
+            var PathElements = XPath.Split('.');
 
             string FilePath = "";
             foreach(var P in PathElements.Where(p => p[0] == 'F'))
@@ -23,7 +24,7 @@ namespace TORCS_Bridge.TorcsIntegration
 
             FilePath += PathElements.Where(p => p[0] == 'f').ToList()[0].Split('_')[1] + ".xml";
 
-            FilePath = TORCSInstallPath + FilePath;
+            FilePath = Path.Combine(TORCSInstallPath, FilePath);
 
             string NodePath = "/params/section";
 
