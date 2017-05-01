@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System;
@@ -15,6 +16,7 @@ namespace TORCS_Bridge
     {
         public static string HostName = "localhost";
         public static string TORCSInstallDirectory = "";
+        public static string TORCSResultsDirectory = "";
         public static int InstanceNumber = 0;
 
         static void Main(string[] args)
@@ -50,7 +52,7 @@ namespace TORCS_Bridge
                                              autoDelete: false,
                                              arguments: null);
                         channel.BasicQos(0, 1, false);
-                        var consumer = new QueueingBasicConsumer(channel);
+                        var consumer = new QueueingBasicConsumer(channel); //[TODO change to eventing]
                         channel.BasicConsume(queue: "rpc_queue",
                                              noAck: false,
                                              consumer: consumer);
@@ -69,35 +71,42 @@ namespace TORCS_Bridge
                             try
                             {
                                 var message = Encoding.UTF8.GetString(body);
-
-                                //int n = int.Parse(message);
+                                
                                 Console.WriteLine(" [.] RunGame()");
 
-                                /*var serializer = new XmlSerializer(typeof(RPCData));
-                                RPCData customData;
-
-                                using (TextReader reader = new StringReader(message))
-                                {
-                                    customData = (RPCData)serializer.Deserialize(reader);
-                                }*/
                                 dynamic JResults = JsonConvert.DeserializeObject(message);
-
                                 
-
                                 foreach (var Param in JResults.parameters)
                                 {
                                     if ((bool)Param.enabled == true)
                                     {
                                         //Params[(int)Param.custom.index] += (double)Param.value;
-                                        //Find appropriate xml file in Torcs and apply changes
+                                        //Find appropriate xml file in Torcs and apply changes 
+                                        XMLIntegration.ChangeValueInTorcsXML(TORCSInstallDirectory, Param.name, (double)Param.value);
                                     }
                                 }
-                                
-                                //Run TORCS
+
+                                //Run TORCS [TODO change number of games to custom value]
+                                var PathToResultsFile = RunHeadless.RunTorcs(TORCSInstallDirectory, TORCSResultsDirectory, 1);
+
+                                Dictionary<string, object> collection = new Dictionary<string, object>()
+                                    {
+                                    };
 
                                 //Collect results
+                                foreach (var Metric in JResults.metrics)
+                                {
+                                    var Value = XMLIntegration.GetJSONOfResultsFromXMLResults(PathToResultsFile, Metric.name);
+                                    collection.Add(Metric.name, Value);
+                                }
 
-                                response = ""; //Send them here
+                                JObject Result = new JObject(
+                                    new JProperty("metrics",
+                                        JObject.FromObject(collection)
+                                    )
+                                );
+
+                                response = Result.ToString(); //Send them here
                             }
                             catch (Exception e)
                             {
