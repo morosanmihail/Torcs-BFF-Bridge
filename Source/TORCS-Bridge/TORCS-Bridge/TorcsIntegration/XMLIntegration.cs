@@ -5,18 +5,29 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using System.Xml.Linq;
 
 namespace TORCS_Bridge.TorcsIntegration
 {
     class XMLIntegration
     {
-        public static void ChangeValueInTorcsXML(string TORCSInstallPath, string XPath, double NewValue)
+        public static void BackupFile(string Filename)
         {
-            // SamplePath = "F_cars.F_car1-ow1.f_car1-ow1.S_Car.A_mass.T_val"
+            File.Copy(Filename, Filename + ".bak", true);
+        }
+
+        public static void RevertBackup(string Filename)
+        {
+            File.Copy(Filename + ".bak", Filename, true);
+            File.Delete(Filename + ".bak");
+        }
+
+        public static string GetPathFromXPath(string TORCSInstallPath, string XPath)
+        {
             var PathElements = XPath.Split('.');
 
             string FilePath = "";
-            foreach(var P in PathElements.Where(p => p[0] == 'F'))
+            foreach (var P in PathElements.Where(p => p[0] == 'F'))
             {
                 var PathElem = P.Split('_')[1];
                 FilePath += PathElem + "/";
@@ -26,9 +37,26 @@ namespace TORCS_Bridge.TorcsIntegration
 
             FilePath = Path.Combine(TORCSInstallPath, FilePath);
 
+            return FilePath;
+        }
+
+        public static void ChangeValueInTorcsXML(string TORCSInstallPath, string XPath, double NewValue)
+        {
+            // SamplePath = "F_cars.F_car1-ow1.f_car1-ow1.S_Car.A_mass.T_val"
+            string FilePath = GetPathFromXPath(TORCSInstallPath, XPath);
+
+            BackupFile(FilePath);
+
+            var PathElements = XPath.Split('.');
+
             string NodePath = "/params/section";
 
+            //XDocument doc2 = XDocument.Load(FilePath, LoadOptions.PreserveWhitespace);
+            //doc2.Declaration = new XDeclaration("1.0", "utf-8", null);
+
             XmlDocument doc = new XmlDocument();
+            doc.PreserveWhitespace = true;
+            
             doc.Load(FilePath);
 
             //TODO: Backup original file. Restore after all games are done
@@ -59,13 +87,14 @@ namespace TORCS_Bridge.TorcsIntegration
                     var nameAttr = aNode.Attributes["name"];
                     if (nameAttr != null && nameAttr.Value.Equals(TargetAttribute))
                     {
-                        aNode.Attributes[TargetAttributeProperty].Value = NewValue.ToString();
+                        double currentValue = double.Parse(aNode.Attributes[TargetAttributeProperty].Value);
+                        aNode.Attributes[TargetAttributeProperty].Value = (currentValue + NewValue).ToString();
                         break;
                     }
                 }
             }
-            
-            doc.Save(FilePath);
+
+            File.WriteAllText(FilePath, Beautify(doc));
         }
 
         public static string GetJSONOfResultsFromXMLResults(string ResultsFilePath, string ResultXMLPath)
@@ -110,6 +139,28 @@ namespace TORCS_Bridge.TorcsIntegration
             }
 
             return "0";
+        }
+
+        public static string Beautify(XmlDocument doc)
+        {
+            string xmlString = null;
+            using (MemoryStream ms = new MemoryStream())
+            {
+                XmlWriterSettings settings = new XmlWriterSettings
+                {
+                    Encoding = new UTF8Encoding(false),
+                    Indent = true,
+                    IndentChars = "  ",
+                    NewLineChars = "\r\n",
+                    NewLineHandling = NewLineHandling.Replace
+                };
+                using (XmlWriter writer = XmlWriter.Create(ms, settings))
+                {
+                    doc.Save(writer);
+                }
+                xmlString = Encoding.UTF8.GetString(ms.ToArray());
+            }
+            return xmlString;
         }
     }
 }

@@ -1,0 +1,61 @@
+{
+	"name": "TORCS",
+	"parameters": [
+		{
+			"name": "F_cars.F_car1-ow1.f_car1-ow1.S_Car.A_mass.T_val",
+			"rangeMin": -20,
+			"rangeMax": 20,
+			"rangeAccuracy": 1,
+			"minimise": "ignore", //"maximise" to maximise, "ignore" to ignore, "minimise" to minimise
+			"weight": 1,
+			"custom":{
+			},
+			"enabled": true,
+		}
+	],
+	"metrics": [
+		{
+			"name": "S_E-Track 6.S_Results.S_Qualifications.S_Rank.S_1.A_best lap time.T_val",
+			"type": "Double",
+		}
+	],
+	"evaluators": [
+		{
+			"name": "LapTime",
+			"type": "AverageEvaluator",
+			"metric": "S_E-Track 6.S_Results.S_Qualifications.S_Rank.S_1.A_best lap time.T_val",
+			"target": 70,
+			"weight": 1,
+			"enabled": true,
+		}
+	],
+	"gaparams": {
+		"Par_CrossoverRatio": 0.35,
+        "Par_GenCountBeforeRefresh": 0,
+        "Par_IslandClusters": 1,
+        "Par_KeepEliteRatio": 0.15,
+        "Par_KeepRandRatio": 0.0,
+        "Par_MaxGenerations": 100000,
+        "Par_MaxPopMembers": "10",
+        "Par_MutateRatio": 0.35,
+        "Par_Seed": "20001",
+        "Par_TournamentSize": "5",
+        "Par_MaxParallelThreads": 32,
+        "extra_MutationChance": 0.5,
+		"extra_use_predictor": false,
+		"string_PredictorType": "NeuralNetworkPredictor"
+	},
+	"bridge": {
+		"type": "remote",
+		"server": "localhost",
+		"port": "5672",
+        "queuename": "rpc_queue_torcs",
+		"username": "",
+		"password": "",
+		//"type": "local",
+		"executable": "F:/GitHub/PacMan-CSharp/Binaries/PacmanBalanceBridge.exe \"%0\" \"%1\" \"%2\"", //%0 = path to this json, %1 = randseed, %2 = params
+	},
+	"custom": {
+		"RaceConfig" : "config\\raceman\\mmcustom"
+	}
+}

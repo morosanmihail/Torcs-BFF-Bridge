@@ -54,108 +54,127 @@ namespace TORCS_Bridge
                 HostName = HostName
             };
 
-            //do
-            //{
-            //On error, try to reconnect to server. Wait 5 seconds between reconnect attempts
-            Console.WriteLine("Connecting to host " + HostName);
-            try
+            factory.AutomaticRecoveryEnabled = true;
+
+            do
             {
-                using (var connection = factory.CreateConnection())
-                using (var channel = connection.CreateModel())
+                //On error, try to reconnect to server. Wait 5 seconds between reconnect attempts
+                Console.WriteLine("Connecting to host " + HostName);
+                try
                 {
-                    channel.QueueDeclare(queue: "rpc_queue_torcs",
-                                         durable: false,
-                                         exclusive: false,
-                                         autoDelete: false,
-                                         arguments: null);
-                    channel.BasicQos(0, 1, false);
-                    var consumer = new EventingBasicConsumer(channel); //[TODO change to eventing]
-                    channel.BasicConsume(queue: "rpc_queue_torcs",
-                                         noAck: false,
-                                         consumer: consumer);
-                    Console.WriteLine(" [x] Awaiting RPC requests");
-
-                    consumer.Received += (model, ea) =>
+                    using (var connection = factory.CreateConnection())
                     {
-                        string response = null;
-                            //var ea = (BasicDeliverEventArgs)consumer.Queue.Dequeue();
-
-                            var body = ea.Body;
-                        var props = ea.BasicProperties;
-                        var replyProps = channel.CreateBasicProperties();
-                        replyProps.CorrelationId = props.CorrelationId;
-
-                        try
+                        using (var channel = connection.CreateModel())
                         {
-                            var message = Encoding.UTF8.GetString(body);
+                            channel.QueueDeclare(queue: "rpc_queue_torcs",
+                                                 durable: false,
+                                                 exclusive: false,
+                                                 autoDelete: false,
+                                                 arguments: null);
+                            channel.BasicQos(0, 1, false);
+                            var consumer = new EventingBasicConsumer(channel); //[TODO change to eventing]
+                            channel.BasicConsume(queue: "rpc_queue_torcs",
+                                                 noAck: false,
+                                                 consumer: consumer);
+                            Console.WriteLine(" [x] Awaiting RPC requests");
 
-                            Console.WriteLine(" [.] RunGame()");
-
-                            dynamic JResults = JsonConvert.DeserializeObject(message);
-
-                            foreach (var Param in JResults["parameters"])
+                            consumer.Received += (model, ea) =>
                             {
-                                if ((bool)Param["enabled"] == true)
+                                string response = null;
+                                //var ea = (BasicDeliverEventArgs)consumer.Queue.Dequeue();
+
+                                var body = ea.Body;
+                                var props = ea.BasicProperties;
+                                var replyProps = channel.CreateBasicProperties();
+                                replyProps.CorrelationId = props.CorrelationId;
+
+                                try
                                 {
-                                        //Params[(int)Param.custom.index] += (double)Param.value;
-                                        //Find appropriate xml file in Torcs and apply changes 
-                                        XMLIntegration.ChangeValueInTorcsXML(TORCSInstallDirectory, (string)Param["name"], (double)Param["value"]);
+                                    var message = Encoding.UTF8.GetString(body);
+
+                                    Console.WriteLine(" [.] RunGame()");
+
+                                    dynamic JResults = JsonConvert.DeserializeObject(message);
+
+                                    foreach (var Param in JResults["parameters"])
+                                    {
+                                        if ((bool)Param["enabled"] == true)
+                                        {
+                                            //Params[(int)Param.custom.index] += (double)Param.value;
+                                            //Find appropriate xml file in Torcs and apply changes 
+                                            XMLIntegration.ChangeValueInTorcsXML(TORCSInstallDirectory, (string)Param["name"], (double)Param["value"]);
+                                        }
+                                    }
+
+                                    //Run TORCS [TODO change number of games to custom value]
+                                    var PathToResultsFile = RunHeadless.RunTorcs(TORCSInstallDirectory, TORCSResultsDirectory, 1, 1, (string)JResults["custom"]["RaceConfig"]);
+
+                                    Dictionary<string, object> collection = new Dictionary<string, object>()
+                                    {
+                                    };
+
+                                    //Collect results
+                                    foreach (var Metric in JResults["metrics"])
+                                    {
+                                        var Value = XMLIntegration.GetJSONOfResultsFromXMLResults(PathToResultsFile, (string)Metric["name"]);
+                                        collection.Add((string)Metric["name"], Value);
+                                    }
+
+                                    JObject Result = new JObject(
+                                        new JProperty("metrics",
+                                            JObject.FromObject(collection)
+                                        )
+                                    );
+
+                                    //Clear files to their original values
+                                    foreach (var Param in JResults["parameters"])
+                                    {
+                                        if ((bool)Param["enabled"] == true)
+                                        {
+                                            //Params[(int)Param.custom.index] += (double)Param.value;
+                                            //Find appropriate xml file in Torcs and apply changes 
+                                            XMLIntegration.RevertBackup(XMLIntegration.GetPathFromXPath(TORCSInstallDirectory, (string)Param["name"]));
+                                        }
+                                    }
+
+                                    response = Result.ToString(); //Send them here
                                 }
-                            }
+                                catch (Exception e)
+                                {
+                                    Console.WriteLine(" [.] " + e.Message);
+                                    response = "";
+                                }
+                                finally
+                                {
+                                    var responseBytes = Encoding.UTF8.GetBytes(response);
+                                    channel.BasicPublish(exchange: "",
+                                                         routingKey: props.ReplyTo,
+                                                         basicProperties: replyProps,
+                                                         body: responseBytes);
+                                    channel.BasicAck(deliveryTag: ea.DeliveryTag,
+                                                     multiple: false);
+                                }
 
-                                //Run TORCS [TODO change number of games to custom value]
-                                var PathToResultsFile = RunHeadless.RunTorcs(TORCSInstallDirectory, TORCSResultsDirectory, 1, 1, (string)JResults["custom"]["RaceConfig"]);
-
-                            Dictionary<string, object> collection = new Dictionary<string, object>()
-                            {
+                                Console.WriteLine(" [x] Awaiting RPC requests");
                             };
 
-                                //Collect results
-                                foreach (var Metric in JResults["metrics"])
-                            {
-                                var Value = XMLIntegration.GetJSONOfResultsFromXMLResults(PathToResultsFile, (string)Metric["name"]);
-                                collection.Add((string)Metric["name"], Value);
-                            }
-
-                            JObject Result = new JObject(
-                                new JProperty("metrics",
-                                    JObject.FromObject(collection)
-                                )
-                            );
-
-                            response = Result.ToString(); //Send them here
-                            }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine(" [.] " + e.Message);
-                            response = "";
+                            Console.WriteLine(" Press [enter] to exit.");
+                            Console.ReadLine();
                         }
-                        finally
-                        {
-                            var responseBytes = Encoding.UTF8.GetBytes(response);
-                            channel.BasicPublish(exchange: "",
-                                                 routingKey: props.ReplyTo,
-                                                 basicProperties: replyProps,
-                                                 body: responseBytes);
-                            channel.BasicAck(deliveryTag: ea.DeliveryTag,
-                                             multiple: false);
-                        }
-
-                        Console.WriteLine(" [x] Awaiting RPC requests");
-                    };
-
-
-                    Console.WriteLine(" Press [enter] to exit.");
-                    Console.ReadLine();
+                    }
                 }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("ERROR: " + e.Message);
-            }
+                catch (Exception e)
+                {
+                    Console.WriteLine("ERROR: " + e.Message);
+                }
+                finally
+                {
 
-            //    Thread.Sleep(5000);
-            //} while (true);
+                }
+
+                Thread.Sleep(3000);
+            } while (true);
+
         }
     }
 }

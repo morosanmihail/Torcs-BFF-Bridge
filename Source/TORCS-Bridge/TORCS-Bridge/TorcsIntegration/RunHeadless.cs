@@ -43,6 +43,12 @@ namespace TORCS_Bridge.TorcsIntegration
 
             var rawentries = Directory.GetFiles(Path.Combine(TORCSResultsPath, ConfigName), "*.xml");
 
+            //Delete all except the last one
+            for(int i=0;i<rawentries.Count() -1;i++)
+            {
+                File.Delete(rawentries[i]);
+            }
+
             return rawentries.OrderBy(t => t).Last();
         }
     }
