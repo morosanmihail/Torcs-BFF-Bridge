@@ -72,16 +72,17 @@ namespace TORCS_Bridge
                                                  autoDelete: false,
                                                  arguments: null);
                             channel.BasicQos(0, 1, false);
-                            var consumer = new EventingBasicConsumer(channel); //[TODO change to eventing]
+                            var consumer = new QueueingBasicConsumer(channel); //[TODO change to eventing]
                             channel.BasicConsume(queue: "rpc_queue_torcs",
                                                  noAck: false,
                                                  consumer: consumer);
                             Console.WriteLine(" [x] Awaiting RPC requests");
 
-                            consumer.Received += (model, ea) =>
+                            while(true)
+                            //consumer.Received += (model, ea) =>
                             {
                                 string response = null;
-                                //var ea = (BasicDeliverEventArgs)consumer.Queue.Dequeue();
+                                var ea = (BasicDeliverEventArgs)consumer.Queue.Dequeue();
 
                                 var body = ea.Body;
                                 var props = ea.BasicProperties;
@@ -107,7 +108,7 @@ namespace TORCS_Bridge
                                     }
 
                                     //Run TORCS [TODO change number of games to custom value]
-                                    var PathToResultsFile = RunHeadless.RunTorcs(TORCSInstallDirectory, TORCSResultsDirectory, 1, 1, (string)JResults["custom"]["RaceConfig"]);
+                                    var PathToResultsFile = RunHeadless.RunTorcs(TORCSInstallDirectory, TORCSResultsDirectory, InstanceNumber, 1, (string)JResults["custom"]["RaceConfig"]);
 
                                     Dictionary<string, object> collection = new Dictionary<string, object>()
                                     {
@@ -126,6 +127,7 @@ namespace TORCS_Bridge
                                         )
                                     );
 
+                                    HashSet<string> RevertList = new HashSet<string>();
                                     //Clear files to their original values
                                     foreach (var Param in JResults["parameters"])
                                     {
@@ -133,8 +135,13 @@ namespace TORCS_Bridge
                                         {
                                             //Params[(int)Param.custom.index] += (double)Param.value;
                                             //Find appropriate xml file in Torcs and apply changes 
-                                            XMLIntegration.RevertBackup(XMLIntegration.GetPathFromXPath(TORCSInstallDirectory, (string)Param["name"]));
+                                            RevertList.Add(XMLIntegration.GetPathFromXPath(TORCSInstallDirectory, (string)Param["name"]));
                                         }
+                                    }
+
+                                    foreach(var P in RevertList)
+                                    {
+                                        XMLIntegration.RevertBackup(P);
                                     }
 
                                     response = Result.ToString(); //Send them here
@@ -158,8 +165,8 @@ namespace TORCS_Bridge
                                 Console.WriteLine(" [x] Awaiting RPC requests");
                             };
 
-                            Console.WriteLine(" Press [enter] to exit.");
-                            Console.ReadLine();
+                            //Console.WriteLine(" Press [enter] to exit.");
+                            //Console.ReadLine();
                         }
                     }
                 }

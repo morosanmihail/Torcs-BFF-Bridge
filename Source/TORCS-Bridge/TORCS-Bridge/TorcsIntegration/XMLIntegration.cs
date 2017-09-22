@@ -13,7 +13,10 @@ namespace TORCS_Bridge.TorcsIntegration
     {
         public static void BackupFile(string Filename)
         {
-            File.Copy(Filename, Filename + ".bak", true);
+            try
+            {
+                File.Copy(Filename, Filename + ".bak", false);
+            } catch { }
         }
 
         public static void RevertBackup(string Filename)

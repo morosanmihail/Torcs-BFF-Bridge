@@ -18,7 +18,7 @@ namespace TORCS_Bridge.TorcsIntegration
         public static string RunTorcs(string TORCSInstallPath, string TORCSResultsPath, int InstanceNumber, int NumberOfRuns = 1, string RaceConfig = @"config\raceman\mmcustom")
         {
             //TODO: move RaceConfig to RaceConfig+InstanceNumber
-            File.Copy(Path.Combine(TORCSInstallPath, RaceConfig + ".xml"), Path.Combine(TORCSInstallPath, RaceConfig + InstanceNumber + ".xml"), true);
+            File.Copy(RaceConfig + ".xml", Path.Combine(TORCSInstallPath, RaceConfig + InstanceNumber + ".xml"), true);
 
             ProcessStartInfo startInfo = new ProcessStartInfo();
             //startInfo.CreateNoWindow = false;
@@ -32,7 +32,10 @@ namespace TORCS_Bridge.TorcsIntegration
             {
                 using (Process exeProcess = Process.Start(startInfo))
                 {
-                    exeProcess.WaitForExit();
+                    if(!exeProcess.WaitForExit(10000))
+                    {
+                        exeProcess.Close();
+                    }
                 }
             }
             catch
