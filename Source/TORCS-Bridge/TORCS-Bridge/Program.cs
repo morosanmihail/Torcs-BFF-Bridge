@@ -54,7 +54,7 @@ namespace TORCS_Bridge
                 HostName = HostName
             };
 
-            factory.AutomaticRecoveryEnabled = true;
+            //factory.AutomaticRecoveryEnabled = true;
 
             do
             {
